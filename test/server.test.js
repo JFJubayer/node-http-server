@@ -41,9 +41,40 @@ describe('/api/time', () => {
   });
 });
 
+describe('/about', () => {
+  test('sends an HTML page', async () => {
+    const res = await fetch(`${base}/about`);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-type'), /^text\/html/);
+    assert.match(await res.text(), /<h1>About<\/h1>/);
+  });
+
+  test('ignores the query string when choosing the route', async () => {
+    const res = await fetch(`${base}/about?x=1`);
+    assert.equal(res.status, 200);
+  });
+});
+
 describe('unknown paths', () => {
-  test('answer 404', async () => {
+  test('answer 404 with an HTML page', async () => {
     const res = await fetch(`${base}/nope`);
     assert.equal(res.status, 404);
+    assert.match(res.headers.get('content-type'), /^text\/html/);
+    assert.match(await res.text(), /404 - Page not found/);
+  });
+});
+
+describe('other methods', () => {
+  test('POST is answered with 405 and an Allow header', async () => {
+    const res = await fetch(`${base}/`, { method: 'POST' });
+    assert.equal(res.status, 405);
+    assert.equal(res.headers.get('allow'), 'GET, HEAD');
+  });
+
+  test('HEAD sends the headers but no body', async () => {
+    const res = await fetch(`${base}/`, { method: 'HEAD' });
+    assert.equal(res.status, 200);
+    assert.ok(Number(res.headers.get('content-length')) > 0);
+    assert.equal(await res.text(), '');
   });
 });
