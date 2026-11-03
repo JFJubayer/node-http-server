@@ -22,8 +22,15 @@ function layout(title, content) {
 `;
 }
 
-const homePage = layout('Node HTTP server', `<h1>Hello, world!</h1>
-  <p>This page is sent by a Node.js server built with the <code>http</code> module.</p>`);
+// The name comes from the address bar, so it must be escaped before it goes into HTML.
+function escapeHtml(text) {
+  const entities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  return text.replace(/[&<>"']/g, (ch) => entities[ch]);
+}
+
+const homePage = (name) => layout('Node HTTP server', `<h1>Hello, ${escapeHtml(name)}!</h1>
+  <p>This page is sent by a Node.js server built with the <code>http</code> module.</p>
+  <p>Put a name in the address to change the greeting: <a href="/?name=Karim"><code>/?name=Karim</code></a></p>`);
 
 const aboutPage = layout('About', `<h1>About</h1>
   <p>A small practice project for learning how requests and responses work in Node.js. It only uses the built-in <code>http</code> module.</p>
@@ -45,6 +52,12 @@ function send(res, status, type, body) {
   res.end(body);
 }
 
+// "/about?x=1" becomes ["/about", "x=1"]
+function splitUrl(url) {
+  const i = url.indexOf('?');
+  return i === -1 ? [url, ''] : [url.slice(0, i), url.slice(i + 1)];
+}
+
 export function createServer() {
   return http.createServer((req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -52,10 +65,11 @@ export function createServer() {
       return send(res, 405, 'text/plain; charset=utf-8', 'Method not allowed');
     }
 
-    const path = req.url.split('?')[0];
+    const [path, query] = splitUrl(req.url);
 
     if (path === '/') {
-      send(res, 200, 'text/html; charset=utf-8', homePage);
+      const name = new URLSearchParams(query).get('name')?.trim() || 'world';
+      send(res, 200, 'text/html; charset=utf-8', homePage(name));
     } else if (path === '/about') {
       send(res, 200, 'text/html; charset=utf-8', aboutPage);
     } else if (path === '/api/time') {

@@ -29,6 +29,34 @@ describe('home page', () => {
   });
 });
 
+describe('home page greeting', () => {
+  const greeting = async (query) => {
+    const res = await fetch(`${base}/${query}`);
+    assert.equal(res.status, 200);
+    return res.text();
+  };
+
+  test('uses the name from ?name=', async () => {
+    assert.match(await greeting('?name=Karim'), /<h1>Hello, Karim!<\/h1>/);
+  });
+
+  test('trims the name and works with Bangla letters', async () => {
+    assert.match(await greeting('?name=%20Karim%20'), /<h1>Hello, Karim!<\/h1>/);
+    assert.match(await greeting(`?name=${encodeURIComponent('করিম')}`), /<h1>Hello, করিম!<\/h1>/);
+  });
+
+  test('falls back to "world" when the name is missing or empty', async () => {
+    assert.match(await greeting('?name='), /<h1>Hello, world!<\/h1>/);
+    assert.match(await greeting('?other=1'), /<h1>Hello, world!<\/h1>/);
+  });
+
+  test('escapes HTML so a name cannot inject a script', async () => {
+    const html = await greeting(`?name=${encodeURIComponent('<script>alert("x")</script>')}`);
+    assert.ok(!html.includes('<script>alert'));
+    assert.ok(html.includes('&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;'));
+  });
+});
+
 describe('/api/time', () => {
   test('sends JSON with the current time', async () => {
     const before = Date.now();
