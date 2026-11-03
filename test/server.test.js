@@ -1,13 +1,16 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { afterEach, beforeEach, describe, test } from 'node:test';
+import { setImmediate as nextTurn } from 'node:timers/promises';
 import { createServer } from '../src/app.js';
 
 let server;
 let base;
+let logs;
 
 beforeEach(async () => {
-  server = createServer();
+  logs = [];
+  server = createServer((line) => logs.push(line));
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   base = `http://127.0.0.1:${server.address().port}`;
@@ -89,6 +92,18 @@ describe('unknown paths', () => {
     assert.equal(res.status, 404);
     assert.match(res.headers.get('content-type'), /^text\/html/);
     assert.match(await res.text(), /404 - Page not found/);
+  });
+});
+
+describe('request log', () => {
+  test('prints one line per request with method, address, status and time', async () => {
+    await fetch(`${base}/about?x=1`);
+    await fetch(`${base}/nope`);
+    await nextTurn();
+
+    assert.equal(logs.length, 2);
+    assert.match(logs[0], /^\d{4}-\d\d-\d\dT[\d:.]+Z GET \/about\?x=1 200 \d+ms$/);
+    assert.match(logs[1], / GET \/nope 404 \d+ms$/);
   });
 });
 

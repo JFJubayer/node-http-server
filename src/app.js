@@ -58,8 +58,13 @@ function splitUrl(url) {
   return i === -1 ? [url, ''] : [url.slice(0, i), url.slice(i + 1)];
 }
 
-export function createServer() {
+export function createServer(log = console.log) {
   return http.createServer((req, res) => {
+    const startedAt = Date.now();
+    res.on('finish', () => {
+      log(`${new Date().toISOString()} ${req.method} ${req.url} ${res.statusCode} ${Date.now() - startedAt}ms`);
+    });
+
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.setHeader('Allow', 'GET, HEAD');
       return send(res, 405, 'text/plain; charset=utf-8', 'Method not allowed');
